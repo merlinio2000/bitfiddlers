@@ -1,14 +1,8 @@
 use anyhow::anyhow;
 use leptos::logging::log;
-use leptos::*;
 
 use crate::AppError;
 
-// TODO: test 64-Bit
-
-type CalcResult = (u64, Flags);
-
-// TODO: not pub
 #[derive(Debug, Copy, Clone)]
 pub struct Calc {
     pub left: u64,
@@ -17,14 +11,19 @@ pub struct Calc {
 }
 
 pub struct Flags {
-    negative: bool,
-    zero: bool,
-    overflow: bool,
-    carry: bool,
+    pub negative: bool,
+    pub zero: bool,
+    pub overflow: bool,
+    pub carry: bool,
 }
+pub struct CalcOutValue {
+    pub unsigned: u64,
+    pub signed: i64,
+}
+type CalcOutResult = (CalcOutValue, Flags);
 pub struct CalcOut {
-    adds: CalcResult,
-    subs: CalcResult,
+    pub adds: CalcOutResult,
+    pub subs: CalcOutResult,
 }
 
 impl Calc {
@@ -50,6 +49,7 @@ impl Calc {
     }
 
     fn as_sub(&self) -> (u64, u64) {
+        // TODO: can probably be replaced with alu_add
         (
             self.left,
             to_width((!self.right).overflowing_add(1u64).0, self.width),
@@ -83,7 +83,7 @@ fn to_width(n: u64, width: u8) -> u64 {
     result
 }
 
-fn alu_add(left: u64, right: u64, width: u8) -> CalcResult {
+fn alu_add(left: u64, right: u64, width: u8) -> CalcOutResult {
     // adapted from ALU:
     let mut extractor = 0b1u64;
     let mut previous_carry = false;
@@ -119,7 +119,10 @@ fn alu_add(left: u64, right: u64, width: u8) -> CalcResult {
     let zero = result == 0;
 
     (
-        result,
+        CalcOutValue {
+            unsigned: result,
+            signed: as_signed(result, width),
+        },
         Flags {
             negative,
             zero,
@@ -127,36 +130,6 @@ fn alu_add(left: u64, right: u64, width: u8) -> CalcResult {
             overflow,
         },
     )
-}
-
-fn pretty_num_sep(s: &str, every_n: usize) -> String {
-    let mut out = String::new();
-
-    let mut sep_counter = every_n - (s.len() % every_n);
-    for (idx, char_) in s.chars().enumerate() {
-        if sep_counter == 0 && idx != s.len() - 1 {
-            out.push('\'');
-            sep_counter = every_n;
-        }
-        out.push(char_);
-        sep_counter = sep_counter.saturating_sub(1);
-    }
-    log!("MERBUG pretty num {out}");
-    out
-}
-
-fn pretty_bin(n: u64, width: u8) -> String {
-    let bin = format!("{n:0width$b}", width = width as usize);
-    format!("0b{}", pretty_num_sep(&bin, 4))
-}
-
-fn pretty_hex(n: u64, width: u8) -> String {
-    let bin = format!("{n:0width$X}", width = (width / 4) as usize);
-    format!("0x{}", pretty_num_sep(&bin, 4))
-}
-fn pretty_dec(n: u64, width: u8) -> String {
-    let bin = format!("{n:0width$}", width = (width / 3) as usize);
-    format!("{}", pretty_num_sep(&bin, 3))
 }
 
 fn as_signed(n: u64, width: u8) -> i64 {
@@ -175,87 +148,4 @@ fn as_signed(n: u64, width: u8) -> i64 {
     log!("MERBUG as_signed msb={msb_set} , from {n:0b}");
     log!("MERBUG as_signed res={res}");
     res
-}
-
-#[component]
-pub fn CalcTable(out: CalcOut, width: u8) -> impl IntoView {
-    view! {
-        <table>
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Binary</th>
-                    <th>Hex</th>
-                    <th>Decimal</th>
-                    <th>Decimal-Signed</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <th>ADDS</th>
-                    <td>{pretty_bin(out.adds.0, width)}</td>
-                    <td>{pretty_hex(out.adds.0, width)}</td>
-                    <td>{pretty_dec(out.adds.0, width)}</td>
-                    <td>{as_signed(out.adds.0, width)}</td>
-                </tr>
-                <tr>
-                    <th>SUBS</th>
-                    <td>{pretty_bin(out.subs.0, width)}</td>
-                    <td>{pretty_hex(out.subs.0, width)}</td>
-                    <td>{pretty_dec(out.subs.0, width)}</td>
-                    <td>{as_signed(out.subs.0, width)}</td>
-                </tr>
-            </tbody>
-        </table>
-        <h3>Flags</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Negative</th>
-                    <th>Zero</th>
-                    <th>Carry</th>
-                    <th>Overflow</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <th>ADDS</th>
-                    <td>{out.adds.1.negative}</td>
-                    <td>{out.adds.1.zero}</td>
-                    <td>{out.adds.1.carry}</td>
-                    <td>{out.adds.1.overflow}</td>
-                </tr>
-                <tr>
-                    <th>SUBS</th>
-                    <td>{out.subs.1.negative}</td>
-                    <td>{out.subs.1.zero}</td>
-                    <td>{out.subs.1.carry}</td>
-                    <td>{out.subs.1.overflow}</td>
-                </tr>
-            </tbody>
-        </table>
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn separators() {
-        assert_eq!(pretty_num_sep("0123", 2), "01'23");
-        assert_eq!(pretty_num_sep("123", 2), "1'23");
-        assert_eq!(pretty_num_sep("23", 2), "23");
-        assert_eq!(pretty_num_sep("3", 2), "3");
-        assert_eq!(pretty_num_sep("01234", 2), "0'12'34");
-        assert_eq!(pretty_num_sep("01234456789", 2), "0'12'34'45'67'89");
-
-        assert_eq!(pretty_num_sep("0123", 3), "0'123");
-        assert_eq!(pretty_num_sep("123", 3), "123");
-        assert_eq!(pretty_num_sep("23", 3), "23");
-        assert_eq!(pretty_num_sep("3", 3), "3");
-        assert_eq!(pretty_num_sep("01234", 3), "01'234");
-        assert_eq!(pretty_num_sep("01234456789", 3), "01'234'456'789");
-    }
 }

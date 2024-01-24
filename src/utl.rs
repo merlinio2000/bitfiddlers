@@ -26,24 +26,3 @@ pub fn BitOption(is: u8, value: ReadSignal<Result<u8, ParseIntError>>) -> impl I
         </option>
     }
 }
-
-#[component]
-pub fn ErrorList(errors: ReadSignal<Vec<anyhow::Error>>) -> impl IntoView {
-    view! {
-        <div id="errors">
-            <p>"Errors: "</p>
-            // we can render a list of errors as strings, if we'd like
-            <ul>
-                {move || {
-                    errors
-                        .with(|es| {
-                            es.into_iter()
-                                .map(|e| view! { <li>{e.to_string()}</li> })
-                                .collect_view()
-                        })
-                }}
-
-            </ul>
-        </div>
-    }
-}

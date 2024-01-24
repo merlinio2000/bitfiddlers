@@ -1,9 +1,11 @@
 mod calc;
+mod components;
 mod utl;
 
 use std::num::ParseIntError;
 
 use crate::calc::*;
+use crate::components::calc_table::CalcTable;
 use crate::utl::*;
 use leptos::error::Error as LeptosError;
 use leptos::logging::log;
@@ -55,15 +57,19 @@ fn parse_input(input: &str) -> Result<u64, AppError> {
 
 #[component]
 fn App() -> impl IntoView {
-    let (in1, set_in1) = create_signal("0xdead'beef".to_string());
-    let (in2, set_in2) = create_signal("0b1000'0000".to_string());
-    let (bits, set_bits) = create_signal(Ok(32u8));
+    let initial_left = "0xdead'beef".to_string();
+    let initial_right = "0b1000'0000".to_string();
+    let initial_width = 32u8;
+
+    let (left_in, set_left_in) = create_signal(initial_left);
+    let (right_in, set_right_in) = create_signal(initial_right);
+    let (width_in, set_width_in) = create_signal(Ok(initial_width));
 
     let parsed = Signal::derive(move || -> Result<Calc, LeptosError> {
         Ok(Calc::try_new(
-            parse_input(&in1.get())?,
-            parse_input(&in2.get())?,
-            bits.get()?,
+            parse_input(&left_in.get())?,
+            parse_input(&right_in.get())?,
+            width_in.get()?,
         )?)
     });
 
@@ -71,28 +77,28 @@ fn App() -> impl IntoView {
         <input
             type="text"
             on:input=move |ev| {
-                set_in1.set(event_target_value(&ev));
+                set_left_in.set(event_target_value(&ev));
             }
 
-            prop:value=in1
+            prop:value=left_in
         />
         <input
             type="text"
             on:input=move |ev| {
-                set_in2.set(event_target_value(&ev));
+                set_right_in.set(event_target_value(&ev));
             }
 
-            prop:value=in2
+            prop:value=right_in
         />
         <select
             name="bits"
             id="bits-sel"
-            on:change=move |ev| { set_bits.set(event_target_value(&ev).parse()) }
+            on:change=move |ev| { set_width_in.set(event_target_value(&ev).parse()) }
         >
-            <BitOption value=bits is=64/>
-            <BitOption value=bits is=32/>
-            <BitOption value=bits is=16/>
-            <BitOption value=bits is=8/>
+            <BitOption value=width_in is=64/>
+            <BitOption value=width_in is=32/>
+            <BitOption value=width_in is=16/>
+            <BitOption value=width_in is=8/>
         </select>
         // the fallback receives a signal containing current errors
         <ErrorBoundary fallback=|errors| {
