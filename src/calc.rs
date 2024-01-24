@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use leptos::logging::log;
 
-use crate::AppError;
+use crate::utl::AppError;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Calc {

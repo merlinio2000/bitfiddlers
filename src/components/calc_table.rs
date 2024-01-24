@@ -1,6 +1,6 @@
 use leptos::*;
 
-use crate::CalcOut;
+use crate::calc::CalcOut;
 
 fn pretty_num_sep(s: &str, every_n: usize) -> String {
     let mut out = String::new();
@@ -31,20 +31,15 @@ fn pretty_hex(n: u64, width: u8) -> String {
     format!("0x{}", pretty_num_sep(&hex, 4))
 }
 fn pretty_dec(n: u64, width: u8) -> String {
+    // TODO: fix width calculation
     let dec = format!("{n:0width$}", width = (width / 3) as usize);
     format!("{}", pretty_num_sep(&dec, 3))
 }
 fn pretty_dec_signed(n: i64, width: u8) -> String {
     if n >= 0 {
-        let dec_uns = format!("{n:0width$}", width = (width / 3) as usize);
-        format!("{}", pretty_num_sep(&dec_uns, 3))
+        pretty_dec(n as u64, width)
     } else {
-        let dec_uns = format!(
-            "{n_abs:0width$}",
-            n_abs = n.abs(),
-            width = (width / 3) as usize
-        );
-        format!("-{}", pretty_num_sep(&dec_uns, 3))
+        format!("-{}", pretty_dec(n.abs() as u64, width))
     }
 }
 
@@ -67,14 +62,14 @@ pub fn CalcTable(out: CalcOut, width: u8) -> impl IntoView {
                     <td>{pretty_bin(out.adds.0.unsigned, width)}</td>
                     <td>{pretty_hex(out.adds.0.unsigned, width)}</td>
                     <td>{pretty_dec(out.adds.0.unsigned, width)}</td>
-                    <td>{out.adds.0.signed}</td>
+                    <td>{pretty_dec_signed(out.adds.0.signed, width)}</td>
                 </tr>
                 <tr>
                     <th>SUBS</th>
                     <td>{pretty_bin(out.subs.0.unsigned, width)}</td>
                     <td>{pretty_hex(out.subs.0.unsigned, width)}</td>
                     <td>{pretty_dec(out.subs.0.unsigned, width)}</td>
-                    <td>{out.subs.0.signed}</td>
+                    <td>{pretty_dec_signed(out.subs.0.signed, width)}</td>
                 </tr>
             </tbody>
         </table>
@@ -128,5 +123,7 @@ mod test {
         assert_eq!(pretty_num_sep("3", 3), "3");
         assert_eq!(pretty_num_sep("01234", 3), "01'234");
         assert_eq!(pretty_num_sep("01234456789", 3), "01'234'456'789");
+
+        // TODO: test negative numbers
     }
 }

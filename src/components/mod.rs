@@ -1,1 +1,3 @@
-pub mod calc_table;
+pub mod app;
+mod calc_table;
+mod general;
